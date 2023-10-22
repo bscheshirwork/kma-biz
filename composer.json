@@ -1,0 +1,8 @@
+{
+  "require": {
+    "vlucas/phpdotenv": "5.5.0",
+    "php-amqplib/php-amqplib": "v3.5.4",
+    "smi2/phpclickhouse": "1.5.1",
+    "ext-pdo": "*"
+  }
+}

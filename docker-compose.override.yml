@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  php:
+    build:
+      args:
+# same to id
+        - UID=1000
+        - GID=1000
+        - USERNAME=kmauser
+        - XDEBUG_PORT=9003
+        - PHP_SERVER_NAME=kma-biz
+#        - https_proxy=http://proxy.com:3128/
+#        - http_proxy=http://proxy.com:3128/
+  php-cli:
+    build:
+      args:
+        - UID=1000
+        - GID=1000
+        - USERNAME=kmauser
+  webserver:
+    ports:
+      - "8080:80"

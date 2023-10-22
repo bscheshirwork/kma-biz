@@ -1,0 +1,73 @@
+version: '3.8'
+services:
+  php:
+    build:
+      context: ./docker/php-fpm
+    volumes:
+      - ./:/app:rw
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+  webserver:
+    image: nginx:1.25.2-alpine
+    depends_on:
+      - php
+    volumes:
+      - ./:/app:ro
+      - ./docker/webserver/nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+  php-cli:
+    build:
+      context: ./docker/php-cli
+    volumes:
+      - ./:/app:rw
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3.12.7-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 15672:15672
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 2s
+      retries: 3
+    restart: unless-stopped
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8.4.69-alpine
+    user: "101:101"
+    volumes:
+      - ./docker/clickhouse/etc/clickhouse-server/config.d/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./docker/clickhouse/etc/clickhouse-server/users.d/users.xml:/etc/clickhouse-server/users.d/users.xml
+      - ./docker/clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      - "8123:8123"
+      - "9010:9000"
+    depends_on:
+      - mariadb
+    environment:
+      - MARIADB_USER=${MARIADB_USER:?}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:?}
+      - MARIADB_DATABASE=${MARIADB_DATABASE:?}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:?}
+    restart: unless-stopped
+  mariadb:
+    image: mariadb:11.1.2-jammy
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:?}
+      - MARIADB_USER=${MARIADB_USER:?}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:?}
+      - MARIADB_DATABASE=${MARIADB_DATABASE:?}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 2s
+      retries: 3
+    volumes:
+      - ./runtime/mysql_data:/var/lib/mysql
+      - ./docker/mariadb/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/:ro
+    restart: unless-stopped
